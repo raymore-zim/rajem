@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a237e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231a237e' width='192' height='192'/><text x='96' y='120' font-size='80' fill='white' text-anchor='middle'>R</text></svg>">
+    <title>RAJEM - Mobile POS</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        header { background: #1a237e; color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        header h1 { margin: 0; font-size: 24px; }
+        nav button { background: #3949ab; color: white; border: none; padding: 8px 12px; margin: 3px; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 13px; }
+      .tab { padding: 15px; background: white; margin: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+      .tab h2 { color: #1a237e; margin-top: 0; font-size: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; overflow-x: auto; display: block; }
+        th, td { border: 1px solid #e0e0e0; padding: 8px; text-align: left; white-space: nowrap; }
+        th { background: #e8eaf6; color: #1a237e; font-weight: bold; }
+        input { padding: 12px; margin: 5px; border: 1px solid #ccc; border-radius: 6px; width: calc(100% - 22px); max-width: 200px; font-size: 16px; }
+        button { background: #43a047; color: white; border: none; padding: 12px 18px; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 15px; min-height: 44px; }
+      .checkout-btn { background: #d32f2f; font-size: 18px; padding: 15px; width: 100%; margin-top: 10px; }
+      .form-row { margin-bottom: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .low-stock { color: #d32f2f; font-weight: bold; }
+      .in-stock { color: #2e7d32; font-weight: bold; }
+      .profit { color: #2e7d32; font-weight: bold; }
+      .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1a237e; padding: 20px; }
+      .login-box { background: white; padding: 30px 20px; border-radius: 10px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); width: 100%; max-width: 350px; }
+      .login-box h1 {white-space: nowrap; font-size:14px;}
+      .login-box input { display: block; width: calc(100% - 22px); margin: 12px auto; }
+      .error { color: #d32f2f; font-size: 14px; }
+      .logout { background: #d32f2f; }
+        #userDisplay { color: #fff; margin: 5px 10px; font-weight: bold; font-size: 12px; }
+      .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 10px; }
+      .receipt { background: white; padding: 15px; width: 100%; max-width: 320px; font-family: 'Courier New', monospace; font-size: 12px; border-radius: 8px; }
+      .report-box { background: #e3f2fd; padding: 12px; border-radius: 6px; margin: 10px 0; border-left: 4px solid #2196F3; }
+      .report-box h3 { margin: 0 0 8px 0; color: #1a237e; font-size: 16px; }
+      .action-btn { padding: 8px 12px; margin: 2px; font-size: 12px; border-radius: 4px; min-height: 36px; }
+      .edit-btn { background: #ff9800; }
+      .delete-btn { background: #d32f2f; }
+      .edit-form { background: white; padding: 20px; border-radius: 10px; width: 100%; max-width: 380px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
+      .edit-form input { width: calc(100% - 22px); }
+      .btn-row { margin-top: 15px; display: flex; gap: 8px; }
+      .btn-row button { flex: 1; }
+      .cancel-btn { background: #757575; }
+      .orange-btn { background: #ff9800; }
+      .blue-btn { background: #2196F3; }
+      .debug { color: red; font-size: 12px; margin-top: 8px; }
+      .install-btn { background: #ff9800; margin-left: 5px; display: none; }
+       /* NEW: Quote style */
+       #quote { font-style: italic; color: #666; margin: 15px 0; font-size: 14px; }
+        @media (max-width: 600px) {
+            header h1 { font-size: 20px; }
+            nav button { padding: 6px 10px; font-size: 12px; }
+          .tab { margin: 5px; padding: 10px; }
+            input { max-width: 100%; }
+            table { font-size: 11px; }
+        }
+        @media print { body * { visibility: hidden; }.receipt,.receipt * { visibility: visible; }.receipt { position: absolute; left: 0; top: 0; } }
+    </style>
+</head>
+<body>
+    <!-- NEW: LOADING SCREEN with quote + OK button -->
+    <div id="loadingScreen" class="login-container">
+        <div class="login-box">
+            <h1>WELCOME TO <b>RAJEM</b> SHOP MANAGEMENT SYSTEM</h1>
+            <p id="quote">Loading...</p>
+            <button onclick="showLogin()">Click to Continue</button>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN - now hidden until OK clicked -->
+    <div id="loginScreen" class="login-container" style="display:none;">
+        <div class="login-box">
+            <h1>RAJEM</h1>
+            <h3>Staff Login</h3>
+            <!-- 1. REMOVED auto-fill: deleted value="admin" and value="rajiem123" -->
+            <input type="text" id="username" placeholder="Username" autocomplete="off">
+            <input type="password" id="password" placeholder="Password" autocomplete="off">
+            <button onclick="login()">Login</button>
+            <button id="installBtn" class="install-btn" onclick="installApp()">Install App</button>
+            <!-- 2. ERROR MESSAGE - hidden by default -->
+            <p id="loginError" class="error" style="display:none;"></p>
+            <p style="font-size:12px;color:gray">Default: admin / rajiem123</p>
+        </div>
+    </div>
+
+    <div id="mainApp" style="display:none;">
+        <header>
+            <h1>RAJEM</h1>
+            <nav>
+                <button onclick="showTab('pos')">POS</button>
+                <button onclick="showTab('inventory')">Inventory</button>
+                <button onclick="showTab('sales')">Sales</button>
+                <span id="userDisplay"></span>
+                <button class="logout" onclick="logout()">Logout</button>
+            </nav>
+        </header>
+
+        <div id="pos" class="tab">
+            <h2>Point of Sale</h2>
+            <input type="text" id="barcodeInput" placeholder="Item name or 'Bread * 5' + Enter" autofocus>
+            <button onclick="addToCart()">Add to Cart</button>
+            <table id="cartTable"><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Total</th><th>X</th></tr></thead><tbody></tbody></table>
+            <h3>Total: $<span id="grandTotal">0.00</span></h3>
+            <button class="checkout-btn" onclick="checkout()">Checkout & Print Receipt</button>
+        </div>
+
+        <div id="inventory" class="tab" style="display:none;">
+            <h2>Inventory</h2>
+            <div class="form-row">
+                <input type="text" id="pName" placeholder="Item Name">
+                <input type="number" id="pTotalCost" placeholder="Total Cost $" step="0.01">
+                <input type="number" id="pPrice" placeholder="Price $" step="0.01">
+                <input type="number" id="pQty" placeholder="Stock Qty">
+                <button onclick="addProduct()">Add Product</button>
+            </div>
+            <div id="debugMsg" class="debug"></div>
+            <table id="inventoryTable">
+                <thead><tr><th>Date</th><th>Item</th><th>Total Cost</th><th>Unit Cost</th><th>Price</th><th>Stock</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="sales" class="tab" style="display:none;">
+            <h2>Sales Reports</h2>
+            <button onclick="exportSalesCSV()" class="orange-btn">Export CSV</button>
+            <button onclick="generateReports()" class="blue-btn">Refresh</button>
+            <div class="report-box"><h3>Today</h3><p id="todayTotal">Loading...</p></div>
+            <div class="report-box"><h3>This Month</h3><p id="monthTotal">Loading...</p></div>
+            <div class="report-box"><h3>Best Seller</h3><p id="bestSeller">Loading...</p></div>
+            <table id="salesTable">
+                <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Price</th><th>Cost</th><th>Sales</th><th>Cost Total</th><th>Profit</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="receiptModal" class="modal" style="display:none;" onclick="if(event.target.id==='receiptModal') closeReceipt()">
+        <div class="receipt"><div id="receiptContent"></div><button onclick="printReceipt()">Print</button><button onclick="saveReceiptPDF()">Save PDF</button><button onclick="closeReceipt()">Close</button></div>
+    </div>
+
+    <div id="editModal" class="modal" style="display:none;" onclick="if(event.target.id==='editModal') closeEdit()">
+        <div class="edit-form" onclick="event.stopPropagation()">
+            <h3>Edit Product</h3>
+            <label>Item Name:</label><input type="text" id="editName">
+            <label>Total Cost $:</label><input type="number" id="editTotalCost" step="0.01">
+            <label>Price $:</label><input type="number" id="editPrice" step="0.01">
+            <label>Stock:</label><input type="number" id="editQty">
+            <div class="btn-row"><button onclick="saveEdit()">Save</button><button class="cancel-btn" onclick="closeEdit()">Cancel</button></div>
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+        let sales = [];
+        let cart = [];
+        let currentUser = null;
+        let editingId = null;
+        let deferredPrompt;
+        const users = [{user: "admin", pass: "rajiem123", role: "manager"}, {user: "cashier1", pass: "1234", role: "cashier"}];
+
+        try {
+            products = JSON.parse(localStorage.getItem('products')) || [];
+            sales = JSON.parse(localStorage.getItem('sales')) || [];
+        } catch(e) { localStorage.clear(); }
+
+        // NEW: Random quotes array
+        const quotes = [
+            "Success starts with one step - Take it today",
+            "Discipline beats motivation every time",
+            "Small progress is still progress",
+            "Your future is created by what you do today",
+            "RAJEM: Track smart, sell smarter"
+        ];
+        // Show random quote on load
+        document.getElementById("quote").innerText = quotes[Math.floor(Math.random() * quotes.length)];
+
+        // NEW: Function to hide loading screen, show login
+        function showLogin() {
+            document.getElementById("loadingScreen").style.display = "none";
+            document.getElementById("loginScreen").style.display = "flex";
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').style.display = 'inline-block';
+        });
+
+        function installApp() {
+            if(deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => deferredPrompt = null);
+            }
+        }
+
+        function login() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            const errorMsg = document.getElementById('loginError');
+            errorMsg.style.display = "none"; // hide error first
+
+            const found = users.find(user => user.user === u && user.pass === p);
+            if(found) {
+                currentUser = found;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.getElementById('userDisplay').innerText = `${u} | ${found.role}`;
+                showTab('pos');
+                setTimeout(() => document.getElementById('barcodeInput').focus(), 100);
+            } else {
+                // 2. Show error if wrong details
+                errorMsg.innerText = "Wrong username or password";
+                errorMsg.style.display = "block";
+                document.getElementById('password').value = ""; // clear password field
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            cart = [];
+            document.getElementById('mainApp').style.display = 'none';
+            // NEW: Go back to loading screen instead of login
+            document.getElementById('loadingScreen').style.display = 'flex';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('loginError').innerText = '';
+            document.getElementById('loginError').style.display = 'none';
+            // refresh quote on logout
+            document.getElementById("quote").innerText = quotes[Math.floor(Math.random() * quotes.length)];
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('products', JSON.stringify(products));
+                localStorage.setItem('sales', JSON.stringify(sales));
+            } catch(e) { alert("Save failed: " + e.message); }
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+            document.getElementById(tabName).style.display = 'block';
+            if(tabName === 'inventory') renderInventory();
+            if(tabName === 'sales') renderSales();
+            if(tabName === 'pos') document.getElementById('barcodeInput').focus();
+        }
+
+        function renderInventory() {
+            const tbody = document.querySelector('#inventoryTable tbody');
+            const debug = document.getElementById('debugMsg');
+            try {
+                tbody.innerHTML = '';
+                debug.innerText = `Loaded ${products.length} products`;
+
+                products.forEach((p, index) => {
+                    if(!p ||!p.name) return;
+                    const unitCost = p.cost || (p.totalCost / p.qty) || 0;
+                    const statusClass = p.qty < 5? 'low-stock' : 'in-stock';
+                    const statusText = p.qty < 5? 'Low Stock' : 'In Stock';
+                    const actions = currentUser.role === 'manager'
+                     ? `<button class="action-btn edit-btn" onclick="editProduct(${p.id})">Edit</button>
+                           <button class="action-btn delete-btn" onclick="deleteProduct(${p.id})">Del</button>`
+                        : '-';
+
+                    tbody.innerHTML += `<tr>
+                        <td>${p.date || 'N/A'}</td>
+                        <td>${p.name}</td>
+                        <td>$${(p.totalCost || 0).toFixed(2)}</td>
+                        <td>$${unitCost.toFixed(2)}</td>
+                        <td>$${(p.price || 0).toFixed(2)}</td>
+                        <td>${p.qty || 0}</td>
+                        <td><span class="${statusClass}">${statusText}</span></td>
+                        <td>${actions}</td>
+                    </tr>`;
+                });
+            } catch(e) {
+                debug.innerText = "Render Error: " + e.message;
+                console.error(e);
+                alert("Table render failed. Check console F12");
+            }
+        }
+
+        function addProduct() {
+            const debug = document.getElementById('debugMsg');
+            try {
+                if(currentUser.role!== 'manager') { alert("Only managers can add products"); return; }
+
+                const name = document.getElementById('pName').value.trim();
+                const totalCost = parseFloat(document.getElementById('pTotalCost').value);
+                const price = parseFloat(document.getElementById('pPrice').value);
+                const qty = parseInt(document.getElementById('pQty').value);
+
+                if(!name) { alert("Item Name required"); return; }
+                if(isNaN(totalCost) || totalCost <= 0) { alert("Total Cost > 0"); return; }
+                if(isNaN(price) || price <= 0) { alert("Price > 0"); return; }
+                if(isNaN(qty) || qty <= 0) { alert("Stock > 0"); return; }
+
+                const unitCost = totalCost / qty;
+                const today = new Date().toISOString().slice(0, 10);
+
+                products.push({
+                    id: Date.now(),
+                    name: name,
+                    date: today,
+                    totalCost: totalCost,
+                    cost: unitCost,
+                    price: price,
+                    qty: qty
+                });
+
+                saveData();
+                renderInventory();
+
+                document.getElementById('pName').value = '';
+                document.getElementById('pTotalCost').value = '';
+                document.getElementById('pPrice').value = '';
+                document.getElementById('pQty').value = '';
+
+                debug.innerText = `✓ Added: ${name}`;
+                setTimeout(() => debug.innerText = `Loaded ${products.length} products`, 2000);
+
+            } catch(e) {
+                debug.innerText = "Add Error: " + e.message;
+                console.error("AddProduct error:", e);
+                alert("Error: " + e.message);
+            }
+        }
+
+        function deleteProduct(id) {
+            const p = products.find(x => x.id === id);
+            if(!p) return;
+            if(!confirm(`Delete ${p.name}?`)) return;
+            products = products.filter(p => p.id!== id);
+            saveData();
+            renderInventory();
+        }
+
+        function editProduct(id) {
+            const p = products.find(x => x.id === id);
+            if(!p) return;
+            editingId = id;
+            document.getElementById('editName').value = p.name;
+            document.getElementById('editTotalCost').value = p.totalCost;
+            document.getElementById('editPrice').value = p.price;
+            document.getElementById('editQty').value = p.qty;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function saveEdit() {
+            const p = products.find(x => x.id === editingId);
+            if(!p) return;
+
+            const newName = document.getElementById('editName').value.trim();
+            const newTotalCost = parseFloat(document.getElementById('editTotalCost').value);
+            const newPrice = parseFloat(document.getElementById('editPrice').value);
+            const newQty = parseInt(document.getElementById('editQty').value);
+
+            if(!newName || isNaN(newTotalCost) || isNaN(newPrice) || isNaN(newQty)) {
+                alert("Fill all fields correctly");
+                return;
+            }
+
+            p.name = newName;
+            p.totalCost = newTotalCost;
+            p.cost = newTotalCost / newQty;
+            p.price = newPrice;
+            p.qty = newQty;
+
+            saveData();
+            renderInventory();
+            closeEdit();
+            alert(`${newName} updated!`);
+        }
+
+        function closeEdit() {
+            document.getElementById('editModal').style.display = 'none';
+            editingId = null;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const barcodeInput = document.getElementById('barcodeInput');
+            if(barcodeInput) {
+                barcodeInput.addEventListener('keypress', function(e) {
+                    if(e.key === 'Enter') addToCart();
+                });
+            }
+        });
+
+        function addToCart() {
+            let input = document.getElementById('barcodeInput').value.trim();
+            if(!input) return;
+            let qty = 1;
+            let searchTerm = input;
+            const qtyMatch = input.match(/^(.+?)[\s]*[\*xX][\s]*(\d+)$/);
+            if(qtyMatch) {
+                searchTerm = qtyMatch[1].trim();
+                qty = parseInt(qtyMatch[2]);
+                if(qty < 1) qty = 1;
+            }
+            const product = products.find(p => p.name.toLowerCase() === searchTerm.toLowerCase());
+            if(!product) { alert("Product not found"); return; }
+            if(product.qty === 0) { alert(`${product.name} OUT OF STOCK`); return; }
+            if(qty > product.qty) { alert(`Only ${product.qty} left`); return; }
+
+            let cartItem = cart.find(c => c.id === product.id);
+            if(cartItem) {
+                if(cartItem.cartQty + qty > product.qty) {
+                    alert(`Can't add ${qty}. Only ${product.qty - cartItem.cartQty} left`);
+                    return;
+                }
+                cartItem.cartQty += qty;
+            } else {
+                cart.push({...product, cartQty: qty});
+            }
+            renderCart();
+            document.getElementById('barcodeInput').value = '';
+            document.getElementById('barcodeInput').focus();
+        }
+
+        function removeFromCart(id) {
+            cart = cart.filter(c => c.id!== id);
+            renderCart();
+        }
+
+        function renderCart() {
+            const tbody = document.querySelector('#cartTable tbody');
+            tbody.innerHTML = '';
+            let total = 0;
+            cart.forEach(item => {
+                let itemTotal = item.price * item.cartQty;
+                total += itemTotal;
+                tbody.innerHTML += `<tr>
+                    <td>${item.name}</td>
+                    <td>$${item.price.toFixed(2)}</td>
+                    <td>${item.cartQty}</td>
+                    <td>$${itemTotal.toFixed(2)}</td>
+                    <td><button class="action-btn delete-btn" onclick="removeFromCart(${item.id})">X</button></td>
+                </tr>`;
+            });
+            document.getElementById('grandTotal').innerText = total.toFixed(2);
+        }
+
+        function checkout() {
+            if(cart.length === 0) return alert("Cart empty");
+            let grandTotal = 0;
+            let grandProfit = 0;
+            let receiptItems = '';
+
+            for(let item of cart) {
+                let prod = products.find(p => p.id === item.id);
+                if(item.cartQty > prod.qty) {
+                    alert(`${prod.name} stock changed! Only ${prod.qty} left.`);
+                    return;
+                }
+            }
+
+            cart.forEach(item => {
+                let prod = products.find(p => p.id === item.id);
+                prod.qty -= item.cartQty;
+
+                let totalSales = item.price * item.cartQty;
+                let totalCost = prod.cost * item.cartQty;
+                let profit = totalSales - totalCost;
+
+                grandTotal += totalSales;
+                grandProfit += profit;
+
+                sales.push({
+                    date: new Date().toLocaleString(),
+                    name: item.name,
+                    qty: item.cartQty,
+                    unitPrice: item.price,
+                    unitCost: prod.cost,
+                    totalSales: totalSales,
+                    totalCost: totalCost,
+                    profit: profit
+                });
+
+                receiptItems += `${item.name} x${item.cartQty} - $${totalSales.toFixed(2)}<br>`;
+            });
+
+            saveData();
+            showReceipt(receiptItems, grandTotal, grandProfit);
+            cart = [];
+            renderCart();
+        }
+
+        function showReceipt(items, total, profit) {
+            const content = `<h3>RAJEM</h3><p>Thank you</p><hr>Date: ${new Date().toLocaleString()}<br>Cashier: ${currentUser.user}<br><hr>${items}<hr><strong>TOTAL: $${total.toFixed(2)}</strong><br><strong>PROFIT: $${profit.toFixed(2)}</strong><hr><p style="text-align:center">Visit Again!</p>`;
+            document.getElementById('receiptContent').innerHTML = content;
+            document.getElementById('receiptModal').style.display = 'flex';
+        }
+
+        function printReceipt() { window.print(); }
+        function saveReceiptPDF() {
+            let receiptHTML = document.getElementById('receiptContent').innerHTML;
+            let win = window.open('', '', 'height=600,width=400');
+            win.document.write('<html><head><title>Receipt</title></head><body>');
+            win.document.write(receiptHTML);
+            win.document.write('</body></html>');
+            win.document.close();
+            win.print();
+        }
+        function closeReceipt() { document.getElementById('receiptModal').style.display = 'none'; }
+
+        function renderSales() {
+            const tbody = document.querySelector('#salesTable tbody');
+            tbody.innerHTML = '';
+            sales.slice().reverse().forEach(s => {
+                tbody.innerHTML += `<tr>
+                    <td>${s.date}</td>
+                    <td>${s.name}</td>
+                    <td>${s.qty}</td>
+                    <td>$${s.unitPrice.toFixed(2)}</td>
+                    <td>$${s.unitCost.toFixed(2)}</td>
+                    <td>$${s.totalSales.toFixed(2)}</td>
+                    <td>$${s.totalCost.toFixed(2)}</td>
+                    <td class="profit">$${s.profit.toFixed(2)}</td>
+                </tr>`;
+            });
+            generateReports();
+        }
+
+        function generateReports() {
+            showTodayTotal();
+            showMonthTotal();
+            showBestSeller();
+        }
+
+        function showTodayTotal() {
+            const today = new Date().toLocaleDateString();
+            let total = 0;
+            let profit = 0;
+            let count = 0;
+            sales.forEach(sale => {
+                if(sale.date.includes(today)) {
+                    total += sale.totalSales;
+                    profit += sale.profit;
+                    count++;
+                }
+            });
+            document.getElementById('todayTotal').innerText =
+                `${today}: ${count} items | Sales: $${total.toFixed(2)} | Profit: $${profit.toFixed(2)}`;
+        }
+
+        function showMonthTotal() {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            let total = 0;
+            let profit = 0;
+            let count = 0;
+            sales.forEach(sale => {
+                const saleDate = new Date(sale.date);
+                if(saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear) {
+                    total += sale.totalSales;
+                    profit += sale.profit;
+                    count++;
+                }
+            });
+            const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+            document.getElementById('monthTotal').innerText =
+                `${monthName}: ${count} items | Sales: $${total.toFixed(2)} | Profit: $${profit.toFixed(2)}`;
+        }
+
+        function showBestSeller() {
+            if(sales.length === 0) {
+                document.getElementById('bestSeller').innerText = 'No sales yet';
+                return;
+            }
+            const productCount = {};
+            sales.forEach(sale => {
+                productCount[sale.name] = (productCount[sale.name] || 0) + sale.qty;
+            });
+            let bestProduct = '';
+            let maxQty = 0;
+            for(const [name, qty] of Object.entries(productCount)) {
+                if(qty > maxQty) {
+                    maxQty = qty;
+                    bestProduct = name;
+                }
+            }
+            document.getElementById('bestSeller').innerText =
+                bestProduct? `${bestProduct} - ${maxQty} units` : 'No data';
+        }
+
+        function exportSalesCSV() {
+            if(sales.length === 0) { alert("No sales data"); return; }
+            let csv = 'Date,Item,Qty,Price,Cost,Sales,Cost Total,Profit\n';
+            sales.forEach(sale => {
+                csv += `"${sale.date}","${sale.name}",${sale.qty},${sale.unitPrice},${sale.unitCost},${sale.totalSales},${sale.totalCost},${sale.profit}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `RAJEM_Sales_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        renderInventory();
+    </script>
+</body>
+</html>
