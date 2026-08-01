@@ -74,7 +74,6 @@
         <div class="login-box">
             <h1>RAJEM</h1>
             <h3>Staff Login</h3>
-            <!-- 1. REMOVED auto-fill: deleted value="admin" and value="rajiem123" -->
             <input type="text" id="username" placeholder="Username" autocomplete="off">
             <input type="password" id="password" placeholder="Password" autocomplete="off">
             <button onclick="login()">Login</button>
@@ -604,6 +603,12 @@
         }
 
         renderInventory();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/rajem/sw.js')
+    .then(() => console.log('RAJEM is ready for offline'))
+    .catch(err => console.log('SW Error:', err));
+}
+
     </script>
 </body>
 </html>
